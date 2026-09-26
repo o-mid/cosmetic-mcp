@@ -1,0 +1,14 @@
+{
+  "name": "cosmetic-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only MCP for four Iranian cosmetics shops.",
+  "scripts": {
+    "start": "node src/index.js --http",
+    "verify": "node scripts/verify.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

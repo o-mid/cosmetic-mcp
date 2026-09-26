@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cosmetics": {
+      "command": "node",
+      "args": ["src/index.js"]
+    }
+  }
+}
