@@ -27,7 +27,7 @@ if (init.result?.serverInfo?.name !== "cosmetic-mcp") throw new Error("handshake
 
 const listed = await rpc("tools/list", {});
 const names = listed.result.tools.map((t) => t.name);
-for (const name of ["list_shops", "search_cosmetics", "product_details"]) {
+for (const name of ["list_shops", "search_cosmetics", "find_best_price", "product_details"]) {
   if (!names.includes(name)) throw new Error(`missing tool ${name}`);
 }
 
@@ -55,4 +55,38 @@ const details = toolJson(
 );
 if (details.shop !== one.shop || !details.title) throw new Error("details mismatch");
 
-console.log(`ok shops=${withHits.map((s) => s.shop).join(",")} sample=${one.shop} ${one.price_toman}`);
+const khanoumi = toolJson(
+  await rpc("tools/call", {
+    name: "search_cosmetics",
+    arguments: { query: "کرم", shop: "khanoumi", limit: 5 },
+  }),
+);
+const khCards = khanoumi.shops[0].products;
+if (!khCards.length) throw new Error(`khanoumi empty: ${khanoumi.shops[0].error ?? ""}`);
+const brands = new Set(khCards.map((c) => c.brand).filter(Boolean));
+if (brands.size < 1) throw new Error("khanoumi cards missing brand");
+
+const priced = toolJson(
+  await rpc("tools/call", {
+    name: "search_cosmetics",
+    arguments: { query: "سرم", shop: one.shop, max_price: 2000000, in_stock: true, limit: 5 },
+  }),
+);
+for (const card of priced.shops[0].products) {
+  if (card.price_toman > 2000000) throw new Error(`price filter leaked ${card.price_toman}`);
+  if (!card.in_stock) throw new Error("in_stock filter leaked");
+}
+
+const best = toolJson(
+  await rpc("tools/call", { name: "find_best_price", arguments: { query: "سرم", limit: 5 } }),
+);
+const prices = best.products.map((p) => p.price_toman);
+if (prices.length < 2) throw new Error("find_best_price too short");
+if (prices.some((p, i) => i > 0 && p < prices[i - 1])) throw new Error("find_best_price not sorted");
+
+const bad = toolJson(
+  await rpc("tools/call", { name: "search_cosmetics", arguments: { query: "سرم", shop: "nope" } }),
+);
+if (!bad.error) throw new Error("unknown shop should error");
+
+console.log(`ok shops=${withHits.map((s) => s.shop).join(",")} khanoumi_brands=${[...brands].join("|")} best=${prices[0]}`);

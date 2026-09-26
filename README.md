@@ -11,9 +11,9 @@ This project is not affiliated with آرا دخت, مولیان, نازی شو, 
 | `aradokht` | [آرا دخت](https://aradokht.net/) | The shop catalog |
 | `mouliyan` | [مولیان](https://mouliyan.com/) | The shop catalog |
 | `nazisho` | [نازی شو](https://nazisho.com/) | The shop catalog |
-| `khanoumi` | [خانومی](https://www.khanoumi.com/brands/sheglam) | Sheglam only |
+| `khanoumi` | [خانومی](https://www.khanoumi.com/) | The whole catalog. `brand` narrows it, for example `sheglam` |
 
-آرا دخت, مولیان, and نازی شو are WooCommerce stores. Their public Store API is what this server reads. خانومی is a different site. The Sheglam brand page has its own product list, about 140 items, and that is the only Khanoumi catalog included.
+آرا دخت, مولیان, and نازی شو are WooCommerce stores. Their public Store API is what this server reads. خانومی is a different site. A search there covers the whole catalog. Pass `brand: "sheglam"` when you only want that brand.
 
 ## Use it
 
@@ -45,7 +45,8 @@ Then ask in normal language. "Sheglam blush under 2 million toman" is enough. Th
 | Tool | What it answers |
 |---|---|
 | `list_shops` | The four shops and what each one covers |
-| `search_cosmetics` | Cards from every shop, or one shop if you pass `shop`. `limit` is per shop, max 10 |
+| `search_cosmetics` | Cards from every shop, or one shop if you pass `shop`. Optional `brand` (Khanoumi), `min_price`, `max_price`, `in_stock`. `limit` is per shop, max 10 |
+| `find_best_price` | The same search, in-stock cards only, cheapest Toman price first |
 | `product_details` | One product. `id` is the WooCommerce id, or the Khanoumi slug from search |
 
 A card has `shop`, `title`, `price_toman`, `regular_price_toman`, `on_sale`, `in_stock`, and `url`. Prices are the numbers the shop is showing, in Toman. If one shop fails, the others still come back, and that shop has an `error` field.

@@ -30,8 +30,7 @@ const KHANOUMI = {
   id: "khanoumi",
   name: "خانومی",
   site: "https://www.khanoumi.com",
-  note: "Sheglam only. The source page is /brands/sheglam, not the whole Khanoumi catalog.",
-  brand: "sheglam",
+  note: "The whole Khanoumi catalog. Pass brand, for example sheglam, to narrow it.",
 };
 
 export const SHOPS = [...WOO, KHANOUMI];
@@ -89,6 +88,12 @@ function wooCard(shop, item) {
   };
 }
 
+function brandName(brand) {
+  if (!brand) return null;
+  if (typeof brand === "string") return brand;
+  return brand.nameFa || brand.nameEn || brand.slug || null;
+}
+
 function khanoumiCard(item) {
   return {
     shop: KHANOUMI.id,
@@ -96,6 +101,7 @@ function khanoumiCard(item) {
     id: item.slug,
     title: item.nameFa || item.nameEn || null,
     title_en: item.nameEn || null,
+    brand: brandName(item.brand),
     price_toman: toman(item.effectivePrice),
     regular_price_toman: toman(item.basePrice),
     on_sale: Number(item.discountPercent) > 0,
@@ -104,32 +110,52 @@ function khanoumiCard(item) {
   };
 }
 
-async function searchWoo(shop, query, limit) {
+function withinBudget(card, minPrice, maxPrice) {
+  if (card.price_toman == null) return false;
+  if (minPrice != null && card.price_toman < minPrice) return false;
+  if (maxPrice != null && card.price_toman > maxPrice) return false;
+  return true;
+}
+
+async function searchWoo(shop, query, limit, opts) {
   const url = new URL("/wp-json/wc/store/v1/products", shop.site);
   if (query) url.searchParams.set("search", query);
   url.searchParams.set("per_page", String(limit));
+  if (opts.minPrice != null) url.searchParams.set("min_price", String(opts.minPrice));
+  if (opts.maxPrice != null) url.searchParams.set("max_price", String(opts.maxPrice));
   const items = await getJson(url);
   if (!Array.isArray(items)) throw new Error("Unexpected product list");
   return items.map((item) => wooCard(shop, item)).filter(Boolean);
 }
 
-async function searchKhanoumi(query, limit) {
+async function searchKhanoumi(query, limit, opts) {
   const url = new URL("/api/ntl/v1/products", KHANOUMI.site);
-  url.searchParams.set("brand", KHANOUMI.brand);
   url.searchParams.set("page_number", "1");
   url.searchParams.set("page_size", String(limit));
   if (query) url.searchParams.set("query", query);
+  if (opts.brand) url.searchParams.set("brand", opts.brand);
+  if (opts.inStock) url.searchParams.set("has_stock", "true");
+  if (opts.minPrice != null) url.searchParams.set("from_price", String(opts.minPrice));
+  if (opts.maxPrice != null) url.searchParams.set("to_price", String(opts.maxPrice));
   const json = await getJson(url);
   const items = json?.data?.products?.items;
   if (!Array.isArray(items)) throw new Error("Unexpected Khanoumi product list");
   return items.map(khanoumiCard);
 }
 
-export async function searchShop(shopId, query, limit) {
+export async function searchShop(shopId, query, limit, opts = {}) {
   const shop = SHOPS.find((s) => s.id === shopId);
   if (!shop) throw new Error(`Unknown shop: ${shopId}`);
-  if (shop.id === "khanoumi") return searchKhanoumi(query, limit);
-  return searchWoo(shop, query, limit);
+  const narrowed = opts.inStock || opts.minPrice != null || opts.maxPrice != null;
+  const fetchLimit = narrowed ? Math.min(20, limit * 4) : limit;
+  const cards = shop.id === "khanoumi"
+    ? await searchKhanoumi(query, fetchLimit, opts)
+    : await searchWoo(shop, query, fetchLimit, opts);
+  return cards.filter((card) => {
+    if (opts.inStock && !card.in_stock) return false;
+    if (opts.minPrice != null || opts.maxPrice != null) return withinBudget(card, opts.minPrice, opts.maxPrice);
+    return true;
+  }).slice(0, limit);
 }
 
 export async function productDetails(shopId, id) {
@@ -140,10 +166,7 @@ export async function productDetails(shopId, id) {
     const json = await getJson(url);
     const item = json?.data;
     if (!item?.slug) throw new Error("Product not found");
-    return {
-      ...khanoumiCard(item),
-      brand: "Sheglam",
-    };
+    return khanoumiCard(item);
   }
   const url = new URL(`/wp-json/wc/store/v1/products/${encodeURIComponent(id)}`, shop.site);
   const item = await getJson(url);
