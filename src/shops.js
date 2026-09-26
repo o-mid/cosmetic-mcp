@@ -94,7 +94,17 @@ function brandName(brand) {
   return brand.nameFa || brand.nameEn || brand.slug || null;
 }
 
+function fold(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[يی]/g, "ی")
+    .replace(/[كک]/g, "ک")
+    .replace(/\u200c/g, " ");
+}
+
 function khanoumiCard(item) {
+  const price = item.effectivePrice ?? item.salesPrice;
+  const regular = item.basePrice;
   return {
     shop: KHANOUMI.id,
     shop_name: KHANOUMI.name,
@@ -102,12 +112,24 @@ function khanoumiCard(item) {
     title: item.nameFa || item.nameEn || null,
     title_en: item.nameEn || null,
     brand: brandName(item.brand),
-    price_toman: toman(item.effectivePrice),
-    regular_price_toman: toman(item.basePrice),
-    on_sale: Number(item.discountPercent) > 0,
-    in_stock: item.hasStock === true,
+    price_toman: toman(price),
+    regular_price_toman: toman(regular),
+    on_sale: Number(item.discountPercent) > 0 || (toman(price) != null && toman(regular) != null && Number(price) < Number(regular)),
+    in_stock: item.hasStock === true || (item.hasStock == null && item.isSalable === true),
     url: item.slug ? `${KHANOUMI.site}/products/${item.slug}` : null,
   };
+}
+
+function khanoumiKeeps(item, query, brand) {
+  if (brand) {
+    const needle = fold(brand);
+    const names = [item.brand?.slug, item.brand?.nameEn, item.brand?.nameFa].filter(Boolean).map(fold);
+    if (!names.includes(needle)) return false;
+  }
+  const tokens = fold(query).split(/\s+/).filter((token) => token.length >= 2);
+  if (!tokens.length) return true;
+  const hay = fold([item.nameFa, item.nameEn, item.brand?.nameFa, item.brand?.nameEn].filter(Boolean).join(" "));
+  return tokens.every((token) => hay.includes(token));
 }
 
 function withinBudget(card, minPrice, maxPrice) {
@@ -140,14 +162,14 @@ async function searchKhanoumi(query, limit, opts) {
   const json = await getJson(url);
   const items = json?.data?.products?.items;
   if (!Array.isArray(items)) throw new Error("Unexpected Khanoumi product list");
-  return items.map(khanoumiCard);
+  return items.filter((item) => khanoumiKeeps(item, query, opts.brand)).map(khanoumiCard);
 }
 
 export async function searchShop(shopId, query, limit, opts = {}) {
   const shop = SHOPS.find((s) => s.id === shopId);
   if (!shop) throw new Error(`Unknown shop: ${shopId}`);
-  const narrowed = opts.inStock || opts.minPrice != null || opts.maxPrice != null;
-  const fetchLimit = narrowed ? Math.min(20, limit * 4) : limit;
+  const narrowed = opts.inStock || opts.brand || opts.minPrice != null || opts.maxPrice != null;
+  const fetchLimit = shop.id === "khanoumi" || narrowed ? Math.min(20, Math.max(limit, limit * 4)) : limit;
   const cards = shop.id === "khanoumi"
     ? await searchKhanoumi(query, fetchLimit, opts)
     : await searchWoo(shop, query, fetchLimit, opts);
