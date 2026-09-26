@@ -17,15 +17,55 @@ This project is not affiliated with آرا دخت, مولیان, نازی شو, 
 
 ## Use it
 
+The server is already running. Add this URL in your agent. No API key, no install.
+
+```
+https://cosmetic-mcp-production.up.railway.app/mcp
+```
+
+`GET https://cosmetic-mcp-production.up.railway.app/health` returns the version.
+
+### Cursor
+
+Open Cursor Settings, then MCP, and add a new server. Or put this in `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "cosmetics": {
+      "url": "https://cosmetic-mcp-production.up.railway.app/mcp"
+    }
+  }
+}
+```
+
+Save and reload. Cosmetics should show up under MCP tools.
+
+### Claude
+
+On claude.ai or Claude Desktop: Customize, then Connectors, then Add custom connector. Paste the URL. Leave OAuth empty. This server has no login.
+
+In Claude Code:
+
+```bash
+claude mcp add --transport http cosmetics https://cosmetic-mcp-production.up.railway.app/mcp
+```
+
+### ChatGPT
+
+Open Settings, then Apps (or Connectors). Turn on Developer mode under Advanced. Create a connector, name it Cosmetics, paste the URL, and choose no authentication. In a new chat, enable that connector before you ask.
+
+### Run it yourself
+
 Node.js 18 or newer.
 
 ```bash
 npm start
 ```
 
-That listens on `PORT` (default 8787). MCP clients post JSON-RPC to `/mcp`. `GET /health` returns the version.
+That listens on `PORT` (default 8787). MCP clients post JSON-RPC to `/mcp`.
 
-In Cursor, or any client that launches a process, set the working directory to this repo:
+For a desktop client that starts a process, set the working directory to this repo:
 
 ```json
 {
