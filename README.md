@@ -1,6 +1,6 @@
 # Cosmetic MCP
 
-Read-only MCP server for four Iranian cosmetics shops. One search asks each shop and returns product cards with the price in Toman and a link to the product page. No API key. Nothing is written back to any shop.
+Read-only MCP server for four cosmetics shops. One search asks each shop and returns product cards with the price in Toman and a link to the product page. No API key. Nothing is written back to any shop.
 
 This project is not affiliated with آرا دخت, مولیان, نازی شو, or خانومی.
 
